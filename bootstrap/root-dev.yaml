@@ -1,0 +1,79 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: root-dev
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+
+  generators:
+    - matrix:
+        generators:
+          # Left side: all app definitions
+          - git:
+              repoURL: https://github.com/johan253/gitops.git
+              revision: master
+              files:
+                - path: "apps/*.yaml"
+
+          # Right side: only values files that exist for dev
+          - git:
+              repoURL: https://github.com/johan253/gitops.git
+              revision: master
+              files:
+                - path: "envs/dev/*-values.yaml"
+
+  # This filter is the critical piece — it joins the two sides
+  # by matching the app name from apps/ against the values filename
+  selector:
+    matchExpressions:
+      - key: appName
+        operator: In
+        values: ["{{ .path.basenameNormalized | trimSuffix \"-values\" }}"]
+
+  template:
+    metadata:
+      name: "{{ .appName }}"
+      namespace: argocd
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: "{{ .project }}"
+
+      sources:
+        # Branch 1: git-sourced (your apps)
+        {{- if eq .sourceType "git" }}
+        - repoURL: "{{ .repoURL }}"
+          targetRevision: "{{ .targetRevision }}"
+          path: "{{ .helmPath }}"
+          helm:
+            valueFiles:
+              - $values/envs/dev/{{ .appName }}-values.yaml
+
+        # Branch 2: helm-repo-sourced (third-party)
+        {{- else if eq .sourceType "helm" }}
+        - repoURL: "{{ .repoURL }}"
+          chart: "{{ .helmChart }}"
+          targetRevision: "{{ .targetRevision }}"
+          helm:
+            valueFiles:
+              - $values/envs/dev/{{ .appName }}-values.yaml
+        {{- end }}
+
+        # Always included: gitops repo as the values ref
+        - repoURL: https://github.com/johan253/gitops.git
+          targetRevision: master
+          ref: values
+
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ .namespace }}"
+
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
