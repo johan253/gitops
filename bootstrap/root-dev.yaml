@@ -12,19 +12,19 @@ spec:
         mergeKeys:
           - appName
         generators:
-          # Left side: all app definitions
-          - git:
-              repoURL: https://github.com/johan253/gitops.git
-              revision: master
-              files:
-                - path: "apps/*.yaml"
-
-          # Right side: only values files that exist for dev
+          # Left side: only values files that exist for dev (drive selection)
           - git:
               repoURL: https://github.com/johan253/gitops.git
               revision: master
               files:
                 - path: "envs/dev/*-values.yaml"
+
+          # Right side: all app definitions
+          - git:
+              repoURL: https://github.com/johan253/gitops.git
+              revision: master
+              files:
+                - path: "apps/*.yaml"
 
   template:
     metadata:
