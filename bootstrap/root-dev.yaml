@@ -8,7 +8,9 @@ spec:
   goTemplateOptions: ["missingkey=error"]
 
   generators:
-    - matrix:
+    - merge:
+        mergeKeys:
+          - appName
         generators:
           # Left side: all app definitions
           - git:
@@ -23,14 +25,6 @@ spec:
               revision: master
               files:
                 - path: "envs/dev/*-values.yaml"
-
-      # This filter is the critical piece — it joins the two sides
-      # by matching the app name from apps/ against the values filename
-      selector:
-        matchExpressions:
-          - key: appName
-            operator: In
-            values: ["{{ .path.basenameNormalized | trimSuffix \"-values\" }}"]
 
   template:
     metadata:
