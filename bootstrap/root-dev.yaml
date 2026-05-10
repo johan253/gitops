@@ -12,12 +12,16 @@ spec:
         mergeKeys:
           - appName
         generators:
-          # Left side: only values files that exist for dev (drive selection)
+          # Left side: only values files that exist for dev AND have appName set (drive selection)
           - git:
               repoURL: https://github.com/johan253/gitops.git
               revision: master
               files:
                 - path: "envs/dev/*-values.yaml"
+            selector:
+              matchExpressions:
+                - key: appName
+                  operator: Exists
 
           # Right side: all app definitions
           - git:
