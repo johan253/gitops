@@ -24,13 +24,13 @@ spec:
               files:
                 - path: "envs/dev/*-values.yaml"
 
-  # This filter is the critical piece — it joins the two sides
-  # by matching the app name from apps/ against the values filename
-  selector:
-    matchExpressions:
-      - key: appName
-        operator: In
-        values: ["{{ .path.basenameNormalized | trimSuffix \"-values\" }}"]
+      # This filter is the critical piece — it joins the two sides
+      # by matching the app name from apps/ against the values filename
+      selector:
+        matchExpressions:
+          - key: appName
+            operator: In
+            values: ["{{ .path.basenameNormalized | trimSuffix \"-values\" }}"]
 
   template:
     metadata:
@@ -42,24 +42,13 @@ spec:
       project: "{{ .project }}"
 
       sources:
-        # Branch 1: git-sourced (your apps)
-        {{- if eq .sourceType "git" }}
         - repoURL: "{{ .repoURL }}"
           targetRevision: "{{ .targetRevision }}"
-          path: "{{ .helmPath }}"
+          path: "{{ .helmPath | default \"\" }}"
+          chart: "{{ .helmChart | default \"\" }}"
           helm:
             valueFiles:
               - $values/envs/dev/{{ .appName }}-values.yaml
-
-        # Branch 2: helm-repo-sourced (third-party)
-        {{- else if eq .sourceType "helm" }}
-        - repoURL: "{{ .repoURL }}"
-          chart: "{{ .helmChart }}"
-          targetRevision: "{{ .targetRevision }}"
-          helm:
-            valueFiles:
-              - $values/envs/dev/{{ .appName }}-values.yaml
-        {{- end }}
 
         # Always included: gitops repo as the values ref
         - repoURL: https://github.com/johan253/gitops.git
