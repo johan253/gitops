@@ -1,0 +1,68 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: root-dev-infra
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+
+  generators:
+    - merge:
+        mergeKeys:
+          - appName
+        generators:
+          # Left side: only infra values files that exist for dev AND have appName set (drive selection)
+          - git:
+              repoURL: https://github.com/johan253/gitops.git
+              revision: master
+              files:
+                - path: "envs/dev/infra/*-values.yaml"
+            selector:
+              matchExpressions:
+                - key: appName
+                  operator: Exists
+
+          # Right side: all infra app definitions
+          - git:
+              repoURL: https://github.com/johan253/gitops.git
+              revision: master
+              files:
+                - path: "apps/infra/*.yaml"
+
+  template:
+    metadata:
+      name: "{{ .appName }}"
+      namespace: argocd
+      annotations:
+        argocd.argoproj.io/sync-wave: "-1"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: "{{ .project }}"
+
+      sources:
+        - repoURL: "{{ .repoURL }}"
+          targetRevision: "{{ .targetRevision }}"
+          path: "{{ .helmPath | default \"\" }}"
+          chart: "{{ .helmChart | default \"\" }}"
+          helm:
+            valueFiles:
+              - $values/envs/dev/infra/{{ .appName }}-values.yaml
+
+        # Always included: gitops repo as the values ref
+        - repoURL: https://github.com/johan253/gitops.git
+          targetRevision: master
+          ref: values
+
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ .namespace }}"
+
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

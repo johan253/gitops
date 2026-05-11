@@ -10,43 +10,57 @@ This is the single source of truth for all deployments across every environment.
 
 ```
 gitops/
-├── apps/                          # One file per application (source of truth for WHERE charts live)
+├── apps/                          # One file per application workload
 │   ├── my-app.yaml
-│   └── external-secrets-operator.yaml
+│   └── infra/                     # One file per infrastructure operator/controller
+│       └── external-secrets.yaml
 │
 ├── envs/                          # Controls WHAT is deployed to each environment
 │   ├── dev/
-│   │   └── my-app-values.yaml
+│   │   ├── my-app-values.yaml
+│   │   └── infra/
+│   │       └── external-secrets-values.yaml
 │   ├── staging/
 │   │   └── my-app-values.yaml
 │   └── prod/
 │       ├── my-app-values.yaml
-│       └── external-secrets-operator-values.yaml
+│       └── infra/
+│           └── external-secrets-values.yaml
 │
-└── bootstrap/                     # ArgoCD root ApplicationSets, one per environment
-    ├── root-dev.yaml
+└── bootstrap/                     # ArgoCD root ApplicationSets, one per environment tier
+    ├── root-dev-apps.yaml         # Workload apps for dev
+    ├── root-dev-infra.yaml        # Infrastructure operators for dev
     ├── root-staging.yaml
     └── root-prod.yaml
 ```
+
+### App tiers
+
+There are two tiers of applications, each managed by a separate ApplicationSet:
+
+| Tier | Directory | ApplicationSet | Examples |
+|---|---|---|---|
+| **Workloads** | `apps/` + `envs/<env>/` | `root-<env>-apps.yaml` | Your services and APIs |
+| **Infrastructure** | `apps/infra/` + `envs/<env>/infra/` | `root-<env>-infra.yaml` | ESO, Prometheus, cert-manager |
+
+Infrastructure apps carry a `sync-wave: -1` annotation so that in any App-of-Apps setup they are guaranteed to sync before workloads. In practice this means CRDs (from ESO, Prometheus, etc.) are installed before workloads that depend on them.
 
 ### The two-file model
 
 Every deployed application is represented by exactly **two things**:
 
-1. **`apps/<app-name>.yaml`** — defines the app once: where its Helm chart lives (either a git repo or a Helm registry), its target namespace, and which ArgoCD project it belongs to. This file never changes per environment.
+1. **`apps[/infra]/<app-name>.yaml`** — defines the app once: where its Helm chart lives (either a git repo or a Helm registry), its target namespace, and which ArgoCD project it belongs to. This file never changes per environment.
 
-2. **`envs/<env>/<app-name>-values.yaml`** — contains the Helm values for that app in that specific environment. **The existence of this file is what causes the app to be deployed.** If the file doesn't exist, the app is not deployed to that environment.
+2. **`envs/<env>[/infra]/<app-name>-values.yaml`** — contains the Helm values for that app in that specific environment. **The presence of the `appName` key in this file is what causes the app to be deployed.** If the key is absent, the app is not deployed. If the key is later removed, ArgoCD prunes the app on the next sync.
 
 ### How ArgoCD picks it up
 
-Each environment has a root `ApplicationSet` in `bootstrap/`. When ArgoCD syncs, it:
+Each environment has two root `ApplicationSet`s in `bootstrap/`. When ArgoCD syncs, it:
 
-1. Scans all files in `apps/` to discover known applications and their chart sources.
-2. Scans all files in `envs/<env>/` to discover which apps have values configured for that environment.
-3. For each app that appears in **both** places, generates an ArgoCD `Application` and deploys it.
-4. Apps with no values file for a given environment are simply not deployed there — no error, no action.
-
-This means the `envs/<env>/` directory is the deployment gate. Adding a values file deploys the app. Deleting it removes it (ArgoCD will prune it on the next sync).
+1. Scans all files in `apps/infra/` and `envs/<env>/infra/` — generates infra Applications (wave -1).
+2. Scans all files in `apps/` (non-infra) and `envs/<env>/` (non-infra) — generates workload Applications (wave 0).
+3. For each app that appears in **both** its app definition and its values file **with `appName` set**, generates an ArgoCD `Application` and deploys it.
+4. Apps whose values file is missing or has no `appName` key are not deployed — no error, no action.
 
 ### Helm values layering
 
@@ -61,11 +75,11 @@ Your environment values file only needs to contain overrides. You do not need to
 
 ---
 
-## Adding a new application
+## Adding a new workload application
 
 ### Step 1 — Create the app definition
 
-Create `apps/<app-name>.yaml`. Choose the correct `sourceType` based on whether this is your own application or a third-party chart.
+Create `apps/<app-name>.yaml`.
 
 **Your own application (hosted in GitHub):**
 
@@ -82,56 +96,67 @@ project: apps
 **Third-party application (hosted in a Helm registry):**
 
 ```yaml
-appName: external-secrets-operator
+appName: my-app
+sourceType: helm
+repoURL: https://charts.example.com
+helmChart: my-app
+targetRevision: "1.2.3"       # always pin an exact version
+namespace: my-app
+project: apps
+```
+
+### Step 2 — Deploy to an environment
+
+Create `envs/<env>/<app-name>-values.yaml`. The file **must contain `appName`** for the app to be deployed:
+
+```yaml
+# envs/dev/my-app-values.yaml
+appName: my-app
+
+image:
+  tag: "abc1234"
+```
+
+Add only the Helm values you want to override — everything else comes from the chart defaults.
+
+### Step 3 — Commit and push
+
+Once merged to `master`, ArgoCD detects the change on its next poll (default: every 3 minutes) and deploys automatically. No manual ArgoCD commands required.
+
+---
+
+## Adding a new infrastructure application
+
+Infrastructure apps (operators, CRD providers, cluster-level controllers) follow the same model but live under `infra/` subdirectories.
+
+### Step 1 — Create the app definition
+
+Create `apps/infra/<app-name>.yaml`:
+
+```yaml
+appName: external-secrets
 sourceType: helm
 repoURL: https://charts.external-secrets.io
 helmChart: external-secrets
-targetRevision: "0.10.5"       # always pin an exact version
+targetRevision: "0.19.0"
 namespace: external-secrets-operator
 project: infrastructure
 ```
 
-> **Naming:** the `appName` field must exactly match the filename without `.yaml`. For example, `appName: my-app` must live in `apps/my-app.yaml`, and its values files must be named `my-app-values.yaml`.
-
 ### Step 2 — Deploy to an environment
 
-Create a values file at `envs/<env>/<app-name>-values.yaml` for each environment you want to deploy to.
-
-The file must exist for the app to be deployed. It can be as minimal as:
+Create `envs/<env>/infra/<app-name>-values.yaml` with `appName` set:
 
 ```yaml
-# envs/dev/my-app-values.yaml
-image:
-  tag: "abc1234"
-```
+# envs/dev/infra/external-secrets-values.yaml
+appName: external-secrets
 
-Or as detailed as needed:
-
-```yaml
-# envs/prod/my-app-values.yaml
-image:
-  tag: "abc1234"
-
-replicaCount: 3
-
-resources:
-  requests:
-    cpu: 200m
-    memory: 256Mi
-  limits:
-    memory: 512Mi
-
-autoscaling:
-  enabled: true
-  minReplicas: 3
-  maxReplicas: 10
+installCRDs: true
 ```
 
 ### Step 3 — Commit and push
 
-Once your changes are merged to `main`, ArgoCD will detect the change on its next poll cycle (default: every 3 minutes) and automatically deploy the application to the configured environments.
-
-No manual ArgoCD commands are required.
+Same as workloads — merge to `master` and ArgoCD handles the rest. Because infra apps carry `sync-wave: -1`, they will always sync before workloads that depend on their CRDs.
 
 ---
 
@@ -139,11 +164,10 @@ No manual ArgoCD commands are required.
 
 | Goal | Action |
 |---|---|
-| Deploy app to dev | Create `envs/dev/<app-name>-values.yaml` |
-| Deploy app to staging | Create `envs/staging/<app-name>-values.yaml` |
-| Deploy app to prod | Create `envs/prod/<app-name>-values.yaml` |
-| Remove app from an environment | Delete the values file for that environment |
-| Remove app from all environments | Delete the values files and `apps/<app-name>.yaml` |
+| Deploy workload app to dev | Create `envs/dev/<app-name>-values.yaml` with `appName` set |
+| Deploy infra app to dev | Create `envs/dev/infra/<app-name>-values.yaml` with `appName` set |
+| Remove app from an environment | Delete the values file, or remove the `appName` key from it |
+| Remove app from all environments | Delete all values files and `apps[/infra]/<app-name>.yaml` |
 | Update configuration for one environment | Edit the values file for that environment only |
 | Promote a config change from dev to staging | Copy/merge the relevant values into the staging values file |
 
@@ -155,6 +179,8 @@ CI pipelines update the image tag automatically by modifying the `image.tag` fie
 
 ```yaml
 # envs/prod/my-app-values.yaml
+appName: my-app
+
 image:
   tag: "new-sha-here"   # ← update this
 ```
@@ -175,21 +201,22 @@ Each app definition specifies a `project` field. Projects enforce boundaries aro
 | `infrastructure` | Operators and cluster-level tooling | Any namespace | Yes |
 
 If you are adding a workload (a service your team owns), use `project: apps`.  
-If you are adding a cluster operator or third-party controller, use `project: infrastructure`.
+If you are adding a cluster operator or third-party controller, use `project: infrastructure` and place it under `apps/infra/`.
 
 ---
 
 ## Bootstrap (first-time cluster setup)
 
-The `bootstrap/` directory contains the root `ApplicationSet` for each environment. These are applied **once** manually when setting up a new cluster. After that, ArgoCD manages everything.
+The `bootstrap/` directory contains the root `ApplicationSet`s for each environment. These are applied **once** manually when setting up a new cluster. Apply infra first so CRDs are available before workloads sync.
 
 ```bash
 # On a fresh cluster, after installing ArgoCD:
-kubectl apply -f bootstrap/root-dev.yaml
+kubectl apply -f bootstrap/root-dev-infra.yaml   # infra first — installs CRDs
+kubectl apply -f bootstrap/root-dev-apps.yaml     # workloads second
 
-# For staging/prod clusters, apply the corresponding file on that cluster:
-kubectl apply -f bootstrap/root-staging.yaml
-kubectl apply -f bootstrap/root-prod.yaml
+# For staging/prod clusters, apply the corresponding files on that cluster:
+kubectl apply -f bootstrap/root-staging-infra.yaml
+kubectl apply -f bootstrap/root-staging-apps.yaml
 ```
 
 You should never need to run `kubectl apply` again after this. All subsequent changes go through git.
@@ -198,8 +225,9 @@ You should never need to run `kubectl apply` again after this. All subsequent ch
 
 ## Conventions
 
-- **One app, one file** in `apps/`. Never define multiple apps in the same file.
+- **One app, one file** in `apps/` or `apps/infra/`. Never define multiple apps in the same file.
+- **Infra vs workloads.** Anything that installs CRDs or runs cluster-wide belongs in `apps/infra/`. Everything else goes in `apps/`.
+- **`appName` is the deployment gate.** The `appName` key in the values file must be present for the app to be deployed. Removing it prunes the app. The key must match the filename prefix and the `appName` in the app definition exactly.
 - **Pin versions.** For third-party Helm charts, always use an exact `targetRevision` version number, not a range or `latest`.
-- **Filenames are load-bearing.** The `appName` in `apps/<name>.yaml` must match the prefix of `envs/<env>/<name>-values.yaml` exactly. A mismatch means the app will not be deployed.
 - **Environment values files are overrides only.** Do not copy the entire chart `values.yaml` into your env file. Only include values you are intentionally changing.
-- **Changes go through pull requests.** Direct pushes to `main` are discouraged. All environment changes, especially to staging and prod, should be reviewed before merge.
+- **Changes go through pull requests.** Direct pushes to `master` are discouraged. All environment changes, especially to staging and prod, should be reviewed before merge.
