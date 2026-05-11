@@ -1,0 +1,35 @@
+appName: prometheus
+
+server:
+  persistentVolume:
+    enabled: false
+
+alertmanager:
+  enabled: false
+
+pushgateway:
+  enabled: false
+
+extraManifests:
+  # Wave 1: GrafanaDataSource — applied after Prometheus server (wave 0) is healthy.
+  # The Grafana Operator reconciles this against the Grafana CR with label dashboards=grafana.
+  - |
+    apiVersion: grafana.integreatly.org/v1beta1
+    kind: GrafanaDataSource
+    metadata:
+      name: prometheus
+      namespace: monitoring
+      annotations:
+        argocd.argoproj.io/sync-wave: "1"
+    spec:
+      instanceSelector:
+        matchLabels:
+          dashboards: grafana
+      datasource:
+        name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-server.monitoring.svc.cluster.local:80
+        isDefault: true
+        jsonData:
+          timeInterval: 15s
