@@ -1,1 +1,119 @@
 appName: grafana-operator
+
+extraObjects:
+  # Wave -1: ArgoCD waits for ESO to resolve this into a Secret (Ready: true)
+  # before moving to later waves, so credentials exist when Grafana starts
+  - apiVersion: external-secrets.io/v1
+    kind: ExternalSecret
+    metadata:
+      name: grafana-operator-github-oauth
+      namespace: monitoring
+      annotations:
+        argocd.argoproj.io/sync-wave: "-1"
+    spec:
+      secretStoreRef:
+        name: infisical
+        kind: ClusterSecretStore
+      target:
+        name: grafana-github-oauth
+      data:
+        - secretKey: GF_AUTH_GITHUB_CLIENT_ID
+          remoteRef:
+            key: /github/oauth/clientId
+        - secretKey: GF_AUTH_GITHUB_CLIENT_SECRET
+          remoteRef:
+            key: /github/oauth/clientSecret
+
+  # Wave 0: PVC must exist before the Grafana CR references it
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: grafana-pvc
+      namespace: monitoring
+      annotations:
+        argocd.argoproj.io/sync-wave: "0"
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 10Gi
+
+  # Wave 1: Grafana CR — CRDs exist (Helm installs them first), secret is ready, PVC is bound
+  - apiVersion: grafana.integreatly.org/v1beta1
+    kind: Grafana
+    metadata:
+      name: grafana
+      namespace: monitoring
+      labels:
+        dashboards: grafana  # GrafanaDashboard CRs use this label to target this instance
+      annotations:
+        argocd.argoproj.io/sync-wave: "1"
+    spec:
+      config:
+        security:
+          admin_user: admin
+        log:
+          mode: console
+        # server:
+        #   root_url: https://grafana.prd.johanhernandez.com
+        auth:
+          disable_login_form: "false"
+        auth.github:
+          enabled: "true"
+          allow_sign_up: "true"
+          client_id: $__env{GF_AUTH_GITHUB_CLIENT_ID}
+          client_secret: $__env{GF_AUTH_GITHUB_CLIENT_SECRET}
+          scopes: user:email,read:org
+          auth_url: https://github.com/login/oauth/authorize
+          token_url: https://github.com/login/oauth/access_token
+          api_url: https://api.github.com/user
+          allowed_organizations: johansorg
+          role_attribute_path: "contains(groups[*], 'johansorg/owner') && 'Admin' || 'Viewer'"
+      deployment:
+        spec:
+          template:
+            spec:
+              containers:
+                - name: grafana
+                  resources:
+                    requests:
+                      cpu: 100m
+                      memory: 256Mi
+                  envFrom:
+                    - secretRef:
+                        name: grafana-github-oauth
+                  volumeMounts:
+                    - name: grafana-storage
+                      mountPath: /var/lib/grafana
+              volumes:
+                - name: grafana-storage
+                  persistentVolumeClaim:
+                    claimName: grafana-pvc
+  # Wave 1: Ingress — uncomment to expose Grafana externally
+  # - apiVersion: networking.k8s.io/v1
+  #   kind: Ingress
+  #   metadata:
+  #     name: grafana
+  #     namespace: monitoring
+  #     annotations:
+  #       argocd.argoproj.io/sync-wave: "1"
+  #       cert-manager.io/cluster-issuer: letsencrypt-http
+  #   spec:
+  #     ingressClassName: traefik
+  #     rules:
+  #       - host: grafana.prd.johanhernandez.com
+  #         http:
+  #           paths:
+  #             - path: /
+  #               pathType: Prefix
+  #               backend:
+  #                 service:
+  #                   name: grafana-service
+  #                   port:
+  #                     number: 3000
+  #     tls:
+  #       - hosts:
+  #           - grafana.prd.johanhernandez.com
+  #         secretName: grafana-tls
