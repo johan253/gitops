@@ -24,14 +24,15 @@ extraObjects:
           remoteRef:
             key: /github/oauth/clientSecret
 
-  # Wave 0: PVC must exist before the Grafana CR references it
+  # Wave 1: PVC and Grafana CR are applied together — the CR creates the Pod,
+  # which triggers WaitForFirstConsumer binding on the PVC
   - apiVersion: v1
     kind: PersistentVolumeClaim
     metadata:
       name: grafana-pvc
       namespace: monitoring
       annotations:
-        argocd.argoproj.io/sync-wave: "0"
+        argocd.argoproj.io/sync-wave: "1"
     spec:
       accessModes:
         - ReadWriteOnce
