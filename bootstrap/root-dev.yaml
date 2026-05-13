@@ -10,7 +10,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/johan253/gitops.git
-    targetRevision: dev
+    targetRevision: master
     path: build/dev
   destination:
     server: https://kubernetes.default.svc
