@@ -1,7 +1,0 @@
-appName: grafana-operator
-repoURL: https://grafana.github.io/helm-charts
-helmPath: ""
-helmChart: grafana-operator
-targetRevision: "v5.22.0"
-namespace: monitoring
-project: default
