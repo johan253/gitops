@@ -16,6 +16,7 @@ class App(TypedDict):
     helmChart: str
     targetRevision: str | None
     namespace: str
+    syncOptions: list[str]
 
 
 def is_valid_app(app: dict) -> bool:
@@ -43,6 +44,7 @@ def get_apps(input_file_path: str) -> list[App]:
                     "helmPath": fields.get("helmPath"),
                     "helmChart": fields.get("helmChart"),
                     "namespace": fields.get("namespace"),
+                    "syncOptions": fields.get("syncOptions", []),
                 },
             )
         )
@@ -210,6 +212,14 @@ def render_application(
         )
 
     spec["sources"] = sources
+
+    if app.get("syncOptions"):
+        sync_policy = spec.setdefault("syncPolicy", {})
+        base = list(sync_policy.get("syncOptions", []))
+        for opt in app["syncOptions"]:
+            if opt not in base:
+                base.append(opt)
+        sync_policy["syncOptions"] = base
 
     return manifest
 

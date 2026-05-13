@@ -3,6 +3,8 @@ apps:
     repoURL: https://charts.external-secrets.io
     helmChart: external-secrets
     namespace: external-secrets-operator
+    syncOptions:
+      - ServerSideApply=true
   gomegle:
     dependencies:
       - external-secrets
