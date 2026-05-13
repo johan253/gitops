@@ -1,0 +1,3 @@
+backend:
+  env:
+    REDIS_URL: gomegle-redis:6379
