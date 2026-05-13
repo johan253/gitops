@@ -8,7 +8,7 @@ INPUT_DIR  := envs
 OUTPUT_DIR := build
 TEMPLATE   := app-template.yaml
 SCRIPT     := scripts/build.py
-REQS       := scripts/requirements.txt
+REQS       := requirements.txt
 
 GITOPS_REPO_URL := https://github.com/johan253/gitops.git
 GITOPS_REPO_REVISION := dev
