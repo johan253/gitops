@@ -1,0 +1,1 @@
+helm upgrade argocd argo/argo-cd --namespace argocd -f bootstrap/argocd/values.yaml

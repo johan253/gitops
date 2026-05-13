@@ -38,6 +38,28 @@ crds:
     argocd.argoproj.io/sync-options: ServerSideApply=true
   # -- Additional labels to be added to all CRDs
   additionalLabels: {}
+  
+configs:
+  cm:
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil then
+        if obj.status.health ~= nil then
+          hs.status = obj.status.health.status
+          if obj.status.health.message ~= nil then
+            hs.message = obj.status.health.message
+          end
+        end
+        if obj.status.sync ~= nil then
+          if obj.status.sync.status ~= "Synced" then
+            hs.status = "Progressing"
+            hs.message = "Waiting for sync to complete"
+          end
+        end
+      end
+      return hs
 
 ## Globally shared configuration
 global:
