@@ -1,27 +1,23 @@
 apps:
   external-secrets:
     repoURL: https://charts.external-secrets.io
-    helmPath: ""
     helmChart: external-secrets
     namespace: external-secrets-operator
+  gomegle:
+    dependencies:
+      - external-secrets
+    repoURL: https://github.com/johan253/gomegle.git
+    helmPath: helm
+    namespace: gomegle
   grafana-operator:
     dependencies:
       - external-secrets
     repoURL: https://grafana.github.io/helm-charts
-    helmPath: ""
     helmChart: grafana-operator
     namespace: monitoring
   prometheus:
     dependencies:
       - grafana-operator
     repoURL: https://prometheus-community.github.io/helm-charts
-    helmPath: ""
     helmChart: prometheus
     namespace: monitoring
-  gomegle:
-    dependencies:
-      - external-secrets
-    repoURL: https://github.com/johan253/gomegle.git
-    helmPath: helm
-    helmChart: ""
-    namespace: gomegle
