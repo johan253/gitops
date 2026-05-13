@@ -2,8 +2,6 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   namespace: argocd
-  finalizers:
-  - resources-finalizer.argocd.argoproj.io
   name: prometheus
   annotations:
     argocd.argoproj.io/sync-wave: '2'
