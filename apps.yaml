@@ -3,7 +3,6 @@ apps:
     repoURL: https://charts.external-secrets.io
     helmPath: ""
     helmChart: external-secrets
-    # targetRevision: "0.19.0"
     namespace: external-secrets-operator
   grafana-operator:
     dependencies:
@@ -11,7 +10,6 @@ apps:
     repoURL: https://grafana.github.io/helm-charts
     helmPath: ""
     helmChart: grafana-operator
-    # targetRevision: "v5.22.0"
     namespace: monitoring
   prometheus:
     dependencies:
@@ -19,5 +17,11 @@ apps:
     repoURL: https://prometheus-community.github.io/helm-charts
     helmPath: ""
     helmChart: prometheus
-    # targetRevision: "25.27.0"
     namespace: monitoring
+  gomegle:
+    dependencies:
+      - external-secrets
+    repoURL: https://github.com/johan253/gomegle.git
+    helmPath: helm
+    helmChart: ""
+    namespace: gomegle

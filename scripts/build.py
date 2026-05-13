@@ -19,8 +19,9 @@ class App(TypedDict):
 
 
 def is_valid_app(app: dict) -> bool:
-    required = {"repoURL", "helmPath", "helmChart", "namespace"}
-    return required.issubset(app.keys())
+    required = {"repoURL", "namespace"}
+    has_source = "helmChart" in app or "helmPath" in app
+    return required.issubset(app.keys()) and has_source
 
 
 def get_apps(input_file_path: str) -> list[App]:
@@ -154,7 +155,12 @@ def get_apps_per_environment(
 
 
 def render_application(
-    template: dict, app: App, wave: int, values_path: str | None
+    template: dict,
+    app: App,
+    wave: int,
+    values_path: str | None,
+    gitops_repo_url: str,
+    gitops_revision: str,
 ) -> dict:
     """
     Deep-copy the template and substitute app-specific values.
@@ -195,21 +201,15 @@ def render_application(
 
     # Second source: gitops repo for values (only needed if values file exists)
     if values_path:
-        gitops_repo = template.get("_gitopsRepoURL", "")
-        gitops_revision = template.get("_gitopsRevision", "master")
         sources.append(
             {
-                "repoURL": gitops_repo,
+                "repoURL": gitops_repo_url,
                 "targetRevision": gitops_revision,
                 "ref": "values",
             }
         )
 
     spec["sources"] = sources
-
-    # Strip internal template-only keys
-    manifest.pop("_gitopsRepoURL", None)
-    manifest.pop("_gitopsRevision", None)
 
     return manifest
 
@@ -219,6 +219,8 @@ def build_manifests(
     envs_dir: str,
     output_dir: str,
     template: dict,
+    gitops_repo_url: str,
+    gitops_revision: str,
 ) -> None:
     for env, waves in env_waves.items():
         env_out = os.path.join(output_dir, env)
@@ -236,7 +238,14 @@ def build_manifests(
                 )
                 values_path = values_rel if os.path.exists(values_abs) else None
 
-                manifest = render_application(template, app, wave_number, values_path)
+                manifest = render_application(
+                    template,
+                    app,
+                    wave_number,
+                    values_path,
+                    gitops_repo_url,
+                    gitops_revision,
+                )
 
                 out_file = os.path.join(env_out, f"{app['appName']}.yaml")
                 with open(out_file, "w") as f:
@@ -273,7 +282,14 @@ def main(args: argparse.Namespace) -> None:
         return
 
     try:
-        build_manifests(env_waves, args.input_dir, args.output_dir, template)
+        build_manifests(
+            env_waves,
+            args.input_dir,
+            args.output_dir,
+            template,
+            args.gitops_repo_url,
+            args.gitops_revision,
+        )
     except Exception as e:
         print(f"Error building manifests: {e}")
         return
@@ -306,6 +322,18 @@ if __name__ == "__main__":
         "--template",
         default="app-template.yaml",
         help="Path to the template file for ArgoCD application manifests (default: app-template.yaml)",
+    )
+    parser.add_argument(
+        "-r",
+        "--gitops-repo-url",
+        required=True,
+        help="URL of the git repository where values files are stored (required if any app has a values file)",
+    )
+    parser.add_argument(
+        "-R",
+        "--gitops-revision",
+        default="master",
+        help="Git revision (branch, tag, or commit) to use for the gitops repo source (default: master)",
     )
     args = parser.parse_args()
 

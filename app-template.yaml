@@ -1,12 +1,10 @@
 # app-template.yaml
-_gitopsRepoURL: https://github.com/johan253/gitops.git
-_gitopsRevision: master
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   namespace: argocd
 spec:
-  project: apps
+  project: default
   destination:
     server: https://kubernetes.default.svc
   syncPolicy:

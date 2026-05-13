@@ -10,6 +10,9 @@ TEMPLATE   := app-template.yaml
 SCRIPT     := scripts/build.py
 REQS       := scripts/requirements.txt
 
+GITOPS_REPO_URL := https://github.com/johan253/gitops.git
+GITOPS_REPO_REVISION := master
+
 .PHONY: all build install clean
 
 all: build
@@ -27,6 +30,8 @@ build: $(VENV)
 		--apps-file $(APPS_FILE) \
 		--input-dir $(INPUT_DIR) \
 		--output-dir $(OUTPUT_DIR) \
+		--gitops-repo-url $(GITOPS_REPO_URL) \
+		--gitops-revision $(GITOPS_REPO_REVISION) \
 		--template $(TEMPLATE)
 
 clean:
