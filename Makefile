@@ -11,7 +11,7 @@ SCRIPT     := scripts/build.py
 REQS       := requirements.txt
 
 GITOPS_REPO_URL := https://github.com/johan253/gitops.git
-GITOPS_REPO_REVISION := master
+GITOPS_REPO_REVISION := dev
 
 .PHONY: all build install clean
 
