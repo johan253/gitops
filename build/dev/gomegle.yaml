@@ -26,5 +26,5 @@ spec:
       valueFiles:
       - $values/envs/dev/gomegle-values.yaml
   - repoURL: https://github.com/johan253/gitops.git
-    targetRevision: master
+    targetRevision: dev
     ref: values
