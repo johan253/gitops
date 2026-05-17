@@ -1,0 +1,23 @@
+# App of apps pointing to gitops build directory with built apps
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-stg
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/johan253/gitops.git
+    targetRevision: master
+    path: build/stg
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

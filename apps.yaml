@@ -1,0 +1,25 @@
+apps:
+  external-secrets:
+    repoURL: https://charts.external-secrets.io
+    helmChart: external-secrets
+    namespace: external-secrets-operator
+    syncOptions:
+      - ServerSideApply=true
+  gomegle:
+    dependencies:
+      - external-secrets
+    repoURL: ghcr.io/johan253/charts
+    helmChart: gomegle
+    namespace: gomegle
+  grafana-operator:
+    dependencies:
+      - external-secrets
+    repoURL: https://grafana.github.io/helm-charts
+    helmChart: grafana-operator
+    namespace: monitoring
+  prometheus:
+    dependencies:
+      - grafana-operator
+    repoURL: https://prometheus-community.github.io/helm-charts
+    helmChart: prometheus
+    namespace: monitoring

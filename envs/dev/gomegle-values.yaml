@@ -1,0 +1,12 @@
+backend:
+  image:
+    tag: 0.2.0-22f0009
+  env:
+    REDIS_URL: gomegle-redis:6379
+
+web:
+  image:
+    tag: 0.2.0-22f0009
+
+ingress:
+  enabled: false

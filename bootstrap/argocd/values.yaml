@@ -39,6 +39,36 @@ crds:
   # -- Additional labels to be added to all CRDs
   additionalLabels: {}
 
+configs:
+  cm:
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil then
+        if obj.status.health ~= nil then
+          hs.status = obj.status.health.status
+          if obj.status.health.message ~= nil then
+            hs.message = obj.status.health.message
+          end
+        end
+        if obj.status.sync ~= nil then
+          if obj.status.sync.status ~= "Synced" then
+            hs.status = "Progressing"
+            hs.message = "Waiting for sync to complete"
+          end
+        end
+      end
+      return hs
+
+  # Apply custom GHCR OCI registry
+  repositories:
+    ghcr-oci-personal:
+      url: ghcr.io/johan253/charts
+      name: ghcr-charts-personal
+      enableOCI: "true"
+      type: helm
+
 ## Globally shared configuration
 global:
   # -- Default domain used by all components
@@ -228,7 +258,6 @@ controller:
   containerPorts:
     # -- Metrics container port
     metrics: 8082
-
 
   ## Application controller metrics configuration
   metrics:

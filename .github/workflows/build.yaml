@@ -1,0 +1,42 @@
+name: Build App Manifests
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Build manifests
+        run: make build
+
+      - name: Commit build output
+        run: |
+          # Configure default bot creds
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Add build files and count diffs
+          git add build/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            NUM=$(git diff --cached --name-only -- 'build/**/*.yaml' | wc -l | tr -d ' ')
+            git commit -m "[bot] build: generated $NUM app manifests"
+            git push origin ${{ github.head_ref }}
+          fi
