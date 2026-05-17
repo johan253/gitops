@@ -19,8 +19,8 @@ spec:
     syncOptions:
     - CreateNamespace=true
   sources:
-  - repoURL: https://github.com/johan253/gomegle.git
-    path: helm
+  - repoURL: oci://ghcr.io/johan253/charts
+    chart: gomegle
     targetRevision: main
     helm:
       valueFiles:
