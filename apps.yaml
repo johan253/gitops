@@ -8,7 +8,7 @@ apps:
   gomegle:
     dependencies:
       - external-secrets
-    repoURL: oci://ghcr.io/johan253/charts
+    repoURL: ghcr.io/johan253/charts
     helmChart: gomegle
     namespace: gomegle
   grafana-operator:

@@ -38,7 +38,7 @@ crds:
     argocd.argoproj.io/sync-options: ServerSideApply=true
   # -- Additional labels to be added to all CRDs
   additionalLabels: {}
-  
+
 configs:
   cm:
     resource.customizations.health.argoproj.io_Application: |
@@ -60,6 +60,14 @@ configs:
         end
       end
       return hs
+
+  # Apply custom GHCR OCI registry
+  repositories:
+    ghcr-oci-personal:
+      url: ghcr.io/johan253/charts
+      name: ghcr-charts-personal
+      enableOCI: "true"
+      type: helm
 
 ## Globally shared configuration
 global:
@@ -250,7 +258,6 @@ controller:
   containerPorts:
     # -- Metrics container port
     metrics: 8082
-
 
   ## Application controller metrics configuration
   metrics:

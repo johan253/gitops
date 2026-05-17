@@ -19,7 +19,7 @@ spec:
     syncOptions:
     - CreateNamespace=true
   sources:
-  - repoURL: oci://ghcr.io/johan253/charts
+  - repoURL: ghcr.io/johan253/charts
     chart: gomegle
     targetRevision: 0.2.0-22f0009
     helm:
