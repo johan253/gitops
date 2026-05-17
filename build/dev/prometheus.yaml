@@ -26,5 +26,5 @@ spec:
       valueFiles:
       - $values/envs/dev/prometheus-values.yaml
   - repoURL: https://github.com/johan253/gitops.git
-    targetRevision: dev
+    targetRevision: master
     ref: values

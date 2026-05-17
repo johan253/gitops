@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: root-dev
+  name: root-stg
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -11,7 +11,7 @@ spec:
   source:
     repoURL: https://github.com/johan253/gitops.git
     targetRevision: master
-    path: build/dev
+    path: build/stg
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
