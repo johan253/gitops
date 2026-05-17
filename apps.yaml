@@ -1,4 +1,10 @@
 apps:
+  cert-manager:
+    repoURL: https://charts.jetstack.io
+    helmChart: cert-manager
+    namespace: cert-manager
+    syncOptions:
+      - ServerSideApply=true
   external-secrets:
     repoURL: https://charts.external-secrets.io
     helmChart: external-secrets
@@ -8,12 +14,14 @@ apps:
   gomegle:
     dependencies:
       - external-secrets
+      - cert-manager
     repoURL: ghcr.io/johan253/charts
     helmChart: gomegle
     namespace: gomegle
   grafana-operator:
     dependencies:
       - external-secrets
+      - cert-manager
     repoURL: https://grafana.github.io/helm-charts
     helmChart: grafana-operator
     namespace: monitoring
