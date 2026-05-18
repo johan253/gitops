@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+  name: ratemycourses
+  annotations:
+    argocd.argoproj.io/sync-wave: '1'
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ratemycourses
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+  sources:
+  - repoURL: ghcr.io/johan253/charts
+    chart: ratemycourses
+    targetRevision: 0.1.0-0235b8b
+    helm:
+      valueFiles:
+      - $values/envs/dev/ratemycourses-values.yaml
+  - repoURL: https://github.com/johan253/gitops.git
+    targetRevision: master
+    ref: values
