@@ -21,7 +21,7 @@ spec:
   sources:
   - repoURL: ghcr.io/johan253/charts
     chart: ratemycourses
-    targetRevision: 0.1.0-0235b8b
+    targetRevision: 0.1.0-cdfac20
     helm:
       valueFiles:
       - $values/envs/dev/ratemycourses-values.yaml
