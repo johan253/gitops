@@ -31,3 +31,10 @@ apps:
     repoURL: https://prometheus-community.github.io/helm-charts
     helmChart: prometheus
     namespace: monitoring
+  ratemycourses:
+    dependencies:
+      - external-secrets
+      - cert-manager
+    repoURL: ghcr.io/johan253/charts
+    helmChart: ratemycourses
+    namespace: ratemycourses
