@@ -14,14 +14,14 @@ apps:
   gomegle:
     dependencies:
       - external-secrets
-      - cert-manager
+      - traefik
     repoURL: ghcr.io/johan253/charts
     helmChart: gomegle
     namespace: gomegle
   grafana-operator:
     dependencies:
       - external-secrets
-      - cert-manager
+      - traefik
     repoURL: https://grafana.github.io/helm-charts
     helmChart: grafana-operator
     namespace: monitoring
@@ -34,7 +34,13 @@ apps:
   ratemycourses:
     dependencies:
       - external-secrets
-      - cert-manager
+      - traefik
     repoURL: ghcr.io/johan253/charts
     helmChart: ratemycourses
     namespace: ratemycourses
+  traefik:
+    dependencies:
+      - cert-manager
+    repoURL: https://helm.traefik.io/traefik
+    helmChart: traefik
+    namespace: traefik
