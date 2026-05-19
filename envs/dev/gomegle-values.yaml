@@ -5,3 +5,8 @@ backend:
 web:
   image:
     tag: 0.2.0-6628c76
+
+ingress:
+  enabled: true
+  hosts:
+    - dev.gomegle.sh
